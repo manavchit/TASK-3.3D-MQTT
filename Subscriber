@@ -1,0 +1,89 @@
+#include <WiFiNINA.h>       // Library for WiFi functionality on Arduino
+#include <ArduinoMqttClient.h>  // Library for MQTT communication
+
+// WiFi credentials
+char wifiSSID[] = "...";      // Replace "..." with your WiFi SSID
+char wifiPassword[] = "hello12345";  // Replace with your WiFi password
+
+// Pin number for the LED (connected to pin 6)
+const int ledPin = 6;
+
+// Create a WiFi and MQTT client object
+WiFiClient wifiClient;
+MqttClient mqttClient(wifiClient);
+
+// MQTT Broker details (server we are connecting to)
+const char mqttBroker[] = "broker.emqx.io"; // MQTT broker address
+int mqttPort = 1883;          // MQTT communication port (1883 is the default port for non-secure MQTT)
+const char mqttTopic[] = "SIT210/waves";  // Topic where the messages will be published/subscribed
+
+void setup() {
+  Serial.begin(9600);         // Initialize the serial monitor for debugging
+  pinMode(ledPin, OUTPUT);    // Set the LED pin as an output
+
+  connectToWiFi();            // Connect to WiFi network
+  connectToMQTTBroker();      // Connect to the MQTT broker
+
+  mqttClient.subscribe(mqttTopic);  // Subscribe to the desired topic
+  Serial.print("Subscribed to Topic: ");
+  Serial.println(mqttTopic);
+  Serial.println("Waiting for messages...");  // Print message to indicate the system is ready
+}
+
+void loop() {
+  // Check if the connection to MQTT is still active
+  if (!mqttClient.connected()) {
+    connectToMQTTBroker();    // Reconnect if disconnected
+  }
+  
+  mqttClient.poll();          // Process any incoming messages
+
+  // Read and process any available messages from the broker
+  while (mqttClient.available()) {
+    String message = mqttClient.readString();  // Read the message
+    Serial.print("Received Message: ");
+    Serial.println(message);
+    processMessage(message);  // Call function to handle the message
+  }
+}
+
+// Function to connect to WiFi
+void connectToWiFi() {
+  Serial.print("Connecting to WiFi: ");
+  Serial.println(wifiSSID);   // Print the WiFi SSID
+
+  // Try connecting to the WiFi network
+  while (WiFi.begin(wifiSSID, wifiPassword) != WL_CONNECTED) {
+    Serial.print(".");        // Print dots while attempting connection
+    delay(1000);              // Wait 1 second before trying again
+  }
+
+  Serial.println("WiFi Connected");  // WiFi connected successfully
+}
+
+// Function to connect to the MQTT broker
+void connectToMQTTBroker() {
+  Serial.print("Connecting to MQTT Broker: ");
+  Serial.println(mqttBroker); // Print the MQTT broker address
+
+  // Try connecting to the MQTT broker
+  while (!mqttClient.connect(mqttBroker, mqttPort)) {
+    Serial.print(".");        // Print dots while attempting connection
+    delay(1000);              // Wait 1 second before trying again
+  }
+
+  Serial.println("MQTT Broker Connected");  // MQTT broker connected successfully
+}
+
+// Function to process received messages
+void processMessage(String message) {
+  Serial.println("Wave Detected");  // Print "Wave Detected" when a message is received
+
+  // Blink the LED 3 times as a signal for receiving the message
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(ledPin, HIGH);   // Turn the LED on
+    delay(500);                   // Wait for 500 milliseconds
+    digitalWrite(ledPin, LOW);    // Turn the LED off
+    delay(500);                   // Wait for 500 milliseconds
+  }
+}
