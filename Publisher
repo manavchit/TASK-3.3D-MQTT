@@ -1,0 +1,127 @@
+#include <WiFiNINA.h>       // Library to manage WiFi functionality on Arduino
+#include <ArduinoMqttClient.h>  // Library for MQTT communication
+
+// WiFi credentials
+char wifiSSID[] = "...";      // Replace "..." with your WiFi SSID
+char wifiPassword[] = "hello12345";  // Replace with your WiFi password
+
+// Pin assignments for ultrasonic sensor and LED
+const int triggerPin = 9;     // Pin for the trigger on the ultrasonic sensor
+const int echoPin = 10;       // Pin for the echo on the ultrasonic sensor
+const int ledPin = 6;         // Pin for the LED
+
+// Variables to hold the distance measurement
+float duration, distance;
+// Speed of sound in cm/us (for distance calculation)
+float speedOfSound = 0.0343;  // Speed of sound in cm/us
+
+// WiFi and MQTT client objects
+WiFiClient wifiClient;
+MqttClient mqttClient(wifiClient);
+
+String lastMessage = "";      // Variable to store the last message sent
+
+// MQTT Broker details
+const char mqttBroker[] = "broker.emqx.io"; // MQTT broker address
+int mqttPort = 1883;          // MQTT broker port
+const char mqttTopic[] = "SIT210/waves";  // MQTT topic to publish messages
+
+// Interval timing to control how often the sensor reads distance
+const long interval = 1000;   // Time interval (1 second)
+long previousMillis = 0;      // Stores the last time the distance was checked
+
+void setup() {
+  Serial.begin(9600);         // Initialize the serial monitor for debugging
+
+  // Set up the ultrasonic sensor's trigger and echo pins
+  pinMode(triggerPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  // Connect to WiFi and the MQTT broker
+  connectToWiFi();
+  connectToMQTTBroker();
+}
+
+void loop() {
+  // Reconnect to MQTT broker if connection is lost
+  if (!mqttClient.connected()) {
+    connectToMQTTBroker();
+  }
+  
+  mqttClient.poll();          // Process any incoming MQTT messages (if needed)
+
+  // Get the current time in milliseconds
+  long currentMillis = millis();
+
+  // If enough time has passed (based on interval), measure distance
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    distance = getDistanceMeasurement();   // Get distance from ultrasonic sensor
+
+    Serial.print("Distance: ");            // Print the distance to the Serial Monitor
+    Serial.println(distance);
+
+    sendMessageBasedOnDistance();          // Send a message if conditions are met
+  }
+}
+
+// Function to connect to WiFi
+void connectToWiFi() {
+  Serial.print("Connecting to WiFi: ");
+  Serial.println(wifiSSID);   // Print WiFi SSID being used
+
+  // Try connecting to the WiFi network
+  while (WiFi.begin(wifiSSID, wifiPassword) != WL_CONNECTED) {
+    Serial.print(".");        // Print dots while trying to connect
+    delay(1000);              // Wait 1 second before retrying
+  }
+
+  Serial.println("WiFi Connected");  // Print message when WiFi is connected
+}
+
+// Function to connect to the MQTT broker
+void connectToMQTTBroker() {
+  Serial.print("Connecting to MQTT Broker: ");
+  Serial.println(mqttBroker); // Print the MQTT broker address
+
+  // Try connecting to the MQTT broker
+  while (!mqttClient.connect(mqttBroker, mqttPort)) {
+    Serial.print(".");        // Print dots while trying to connect
+    delay(1000);              // Wait 1 second before retrying
+  }
+
+  Serial.println("MQTT Broker Connected");  // Print message when connected to MQTT
+}
+
+// Function to measure distance using the ultrasonic sensor
+float getDistanceMeasurement() {
+  // Trigger the ultrasonic sensor by sending a pulse
+  digitalWrite(triggerPin, LOW);      // Ensure the trigger is initially low
+  delayMicroseconds(3);
+  digitalWrite(triggerPin, HIGH);     // Send a high pulse to trigger the sensor
+  delayMicroseconds(10);              // Wait for 10 microseconds
+  digitalWrite(triggerPin, LOW);      // Set trigger back to low
+
+  // Measure the pulse duration (time taken for the echo to be received)
+  duration = pulseIn(echoPin, HIGH, 25000);  // Timeout after 25 milliseconds
+
+  // Calculate distance based on the pulse duration
+  return (duration * speedOfSound) / 2;  // Divide by 2 for round-trip calculation
+}
+
+// Function to send an MQTT message based on the measured distance
+void sendMessageBasedOnDistance() {
+  // Check if the measured distance is within a certain range
+  if (distance > 0 && distance < 15) {
+    // Start sending an MQTT message
+    mqttClient.beginMessage(mqttTopic);
+    mqttClient.print("Manav");      // Message to be sent (can be changed)
+    mqttClient.endMessage();
+    
+    lastMessage = "Wave";           // Store the last sent message (if needed)
+    Serial.println("Message Sent!");  // Print confirmation message
+
+    delay(5000);  // Wait for 5 seconds before sending another message
+  }
+}
