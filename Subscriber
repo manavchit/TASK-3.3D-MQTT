@@ -76,11 +76,24 @@ void connectToMQTTBroker() {
 }
 
 // Function to process received messages
-void processMessage(String message) {
+void processMessageWave(String message) {
+  if(message=="Wave")
   Serial.println("Wave Detected");  // Print "Wave Detected" when a message is received
 
   // Blink the LED 3 times as a signal for receiving the message
   for (int i = 0; i < 3; i++) {
+    digitalWrite(ledPin, HIGH);   // Turn the LED on
+    delay(500);                   // Wait for 500 milliseconds
+    digitalWrite(ledPin, LOW);    // Turn the LED off
+    delay(500);                   // Wait for 500 milliseconds
+  }
+}
+void processMessagePat(String message) {
+  if(message=="Pat")
+  Serial.println("Pat Detected");  // Print "Pat Detected" when a message is received
+
+  // Blink the LED 2 times as a signal for receiving the message
+  for (int i = 0; i < 2; i++) {
     digitalWrite(ledPin, HIGH);   // Turn the LED on
     delay(500);                   // Wait for 500 milliseconds
     digitalWrite(ledPin, LOW);    // Turn the LED off
