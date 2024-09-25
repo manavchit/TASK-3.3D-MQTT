@@ -112,16 +112,27 @@ float getDistanceMeasurement() {
 
 // Function to send an MQTT message based on the measured distance
 void sendMessageBasedOnDistance() {
-  // Check if the measured distance is within a certain range
+  // Check if the measured distance is within a certain range (greater than 0 and less than 15)
   if (distance > 0 && distance < 15) {
-    // Start sending an MQTT message
+    // Begin sending a message to the specified MQTT topic
     mqttClient.beginMessage(mqttTopic);
-    mqttClient.print("Manav");      // Message to be sent (can be changed)
+    
+    // If the distance is less than 10, send a "Wave" message
+    if (distance < 10) {
+      mqttClient.print("Wave");
+      Serial.println("Wave Message Sent!");  // Print to the serial monitor for debugging
+    } 
+    // If the distance is 10 or greater but still less than 15, send a "Pat" message
+    else {
+      mqttClient.print("Pat");
+      Serial.println("Pat Message Sent!");   // Print to the serial monitor for debugging
+    }
+
+    // End the MQTT message after sending
     mqttClient.endMessage();
     
-    lastMessage = "Wave";           // Store the last sent message (if needed)
-    Serial.println("Message Sent!");  // Print confirmation message
-
-    delay(5000);  // Wait for 5 seconds before sending another message
-  }
+    // Introduce a delay of 5000 milliseconds (5 seconds) before checking again
+    delay(5000);  
+  }
 }
+
